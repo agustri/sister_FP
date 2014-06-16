@@ -2,6 +2,7 @@ import csv
 import dispy
 import numpy
 from scipy.cluster.vq import kmeans, vq
+import pickle
 
 ### OWN CODE ###
 def distance(a, b):
@@ -11,16 +12,26 @@ def distance(a, b):
         sum += (i*i)
     return sqrt(sum)
 
-def compute(centroids, dataset):
+def compute(centroids, dataset, start_id):
     import numpy
-    idx = 0
-    min_dist = float('inf')
+    cluster_data = []
     for i in range(len(centroids)):
-        dist = distance(dataset, centroids[i])
-        if dist < min_dist:
-            min_dist = dist
-            idx = i
-    return idx
+        cluster_data.append([])
+        cluster_data[i] = []
+
+    data_id = start_id
+    for data in dataset:
+        cluster_id = 0
+        min_dist = float('inf')
+        for i in range(len(centroids)):
+            dist = distance(data, centroids[i])
+            if dist < min_dist:
+                min_dist = dist
+                cluster_id = i
+        cluster_data[cluster_id].append(data_id)
+        data_id += 1
+    print "dataset terproses =", data_id - start_id,
+    return cluster_data
 
 def load_csv(file):
     temp1 = []
@@ -36,34 +47,51 @@ def load_csv(file):
                 temp.append(c)
             temp1.append(temp)
     dataset = numpy.array(temp1)
-    print "number of dataset", len(dataset)
+    print "jumlah dataset", len(dataset)
     return dataset
 ### OWN CODE ###
 
 if __name__ == '__main__':
-    dataset = load_csv("../dataset/small.csv")
+    cluster_count = 4
+    dataset = load_csv("../data/kddcup.newtestdata_10_percent_unlabeled.csv")
     datasize = len(dataset)
-    centroids,_ = kmeans(dataset, 4)
+    centroids,_ = kmeans(dataset, cluster_count)
 
     # setup worker yang akan mengeksekusi fungsi compute yang bergantung pada fungsi distance
-    cluster = dispy.JobCluster(compute, nodes=['10.151.40.190'], depends=[distance])
+    worker_ip = ['192.168.56.101']
+    cluster = dispy.JobCluster(compute, nodes=worker_ip, depends=[distance])
     jobs = []
-    for i in range(datasize):
+    # jumlah dataset yang dikirim ke worker sekali submit
+    submit_size = 2000
+    start_id = 0
+    job_count = 0
+    while start_id < datasize:
+        end_id = start_id + submit_size
+        if end_id > datasize:
+            end_id = datasize
         # mengirim parameter ke fungsi 'compute'
-        job = cluster.submit(centroids, dataset[i]) 
+        job = cluster.submit(centroids, dataset[start_id : end_id], start_id) 
         # id dataset
-        job.id = i
+        job.id = job_count
         jobs.append(job)
+        start_id = end_id
+        job_count += 1
 
     result = []
-    for i in range(len(centroids)):
+    for i in range(cluster_count):
         result.append([])
         result[i] = []
+
     for job in jobs:
         # menunggu job worker selesai
         job() 
-        print('dataset %s: cluster %s [output %s]' % (job.id, job.result, job.stdout))
-        result[int(job.result)].append(job.id)
-    for i in range(len(centroids)):
-        print "Anggota klaster ke:", i
-        print result[i]
+        print('job %s selesai, stdout -> %s' % (job.id, job.stdout))
+        for i in range(cluster_count):
+            result[i].append(job.result[i])
+    for i in range(cluster_count):
+        # print "Anggota klaster ke:", i
+        # print result[i]
+        fname = "../data/cluster-{}.txt".format(i)
+        print "Menulis hasil cluster", i, "clustering ke", fname
+        with open(fname, 'w') as f:
+            f.write(str(result[i]))
