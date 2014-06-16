@@ -12,4 +12,7 @@ Cara Running `kmeans_dispy.py` :
 2. Setting input file csv dataset pada `dataset = load_csv("../data/kddcup.newtestdata_10_percent_unlabeled.csv")`
 3. Setting output hasil clustering pada `fname = "../data/cluster-{}.txt".format(i)`
 3. Setting jumlah dataset yang dikirim ke worker tiap sekali submit pada `submit_size = 2000`
-
+4. Isi jumlah klaster hasilk yang diinginkan pada `cluster_count = 4`
+5. Jalankan worker dengan perintah `dispynode.py -d -i 192.168.56.101`
+6. Jalankan `kmeans_dispy.py`
+6. Berdoa semoga program berjalan lancar

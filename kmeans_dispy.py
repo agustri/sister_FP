@@ -1,8 +1,6 @@
-import csv
 import dispy
 import numpy
-from scipy.cluster.vq import kmeans, vq
-import pickle
+from scipy.cluster.vq import kmeans
 
 ### OWN CODE ###
 def distance(a, b):
@@ -87,11 +85,9 @@ if __name__ == '__main__':
         job() 
         print('job %s selesai, stdout -> %s' % (job.id, job.stdout))
         for i in range(cluster_count):
-            result[i].append(job.result[i])
+            result[i] = result[i] + job.result[i]
     for i in range(cluster_count):
-        # print "Anggota klaster ke:", i
-        # print result[i]
         fname = "../data/cluster-{}.txt".format(i)
-        print "Menulis hasil cluster", i, "clustering ke", fname
+        print "Menulis hasil cluster", i, "ke", fname
         with open(fname, 'w') as f:
             f.write(str(result[i]))
